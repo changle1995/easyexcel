@@ -135,6 +135,12 @@ public class TypeHandlerRegistry {
         if(CACHE_COLUMN_HANDLERS_MAP.containsKey(column)) {
             return CACHE_COLUMN_HANDLERS_MAP.get(column);
         }
+        TypeHandler returned = getTypeHandlerWithoutCache(fw);
+        CACHE_COLUMN_HANDLERS_MAP.put(column, returned);
+        return returned;
+    }
+
+    public TypeHandler getTypeHandlerWithoutCache(FieldWrapper fw) {
         boolean isCollection = Collection.class.isAssignableFrom(fw.getType());
         TypeHandler returned = null;
         if(!DefaultTypeHandler.class.isAssignableFrom(fw.getExcelField().hanlder())) {
@@ -149,7 +155,6 @@ public class TypeHandlerRegistry {
         } else {
             returned = getSingleTypeHandler(fw.getType());
         }
-        CACHE_COLUMN_HANDLERS_MAP.put(column, returned);
         return returned;
     }
 

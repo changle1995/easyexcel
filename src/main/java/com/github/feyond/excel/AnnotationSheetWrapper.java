@@ -141,4 +141,40 @@ public class AnnotationSheetWrapper extends SheetWrapper {
         return dataList;
     }
 
+    public <E> List<E> getDataListWithHeader(int headerRow, Class<E> cls, int... groups) {
+        initializeFields(cls, OperateType.IMPORT, groups);
+        List<E> dataList = new ArrayList<>();
+        Row headers = sheet.getRow(headerRow);
+        try {
+            for (int rownum = headerRow + 1; rownum <= this.sheet.getLastRowNum(); rownum++) {
+                log.debug("read row[{}]...", rownum);
+                E e = cls.newInstance();
+                Row row = sheet.getRow(rownum);
+                row.forEach(cell -> {
+                    this.fieldAnnotationList.forEach(fieldWrapper -> {
+                        if (fieldWrapper.getExcelField().header().equals(headers.getCell(cell.getColumnIndex()).getStringCellValue())) {
+                            TypeHandler handler =  typeHandlerRegistry.getTypeHandlerWithoutCache(fieldWrapper);
+                            log.debug("read column[{}], handler:{}...", cell.getColumnIndex(), handler.getClass().getSimpleName());
+                            Object val = handler.getValueObject(cell);
+                            if (val != null && fieldWrapper.getField() != null) {
+                                if (fieldWrapper.getField().isAccessible()) {
+                                    ReflectionHelper.setField(fieldWrapper.getField(), e, val);
+                                } else {
+                                    ReflectionHelper.invokeMethod(ReflectionHelper.setterMethod(e.getClass(), fieldWrapper.getField().getName(), fieldWrapper.getType()), e, val);
+                                }
+                            } else if (val != null && fieldWrapper.getMethod() != null) {
+                                ReflectionHelper.invokeMethod(fieldWrapper.getMethod(), e, val);
+                            }
+                        }
+                    });
+                });
+                dataList.add(e);
+            }
+        } catch (InstantiationException | IllegalAccessException e) {
+            log.error("", e);
+            throw new RuntimeException("文档导入异常", e);
+        }
+        return dataList;
+    }
+
 }
